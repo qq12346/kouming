@@ -25,7 +25,7 @@ export async function runResearcher({ apiKey, intent, trace, values, subtask, pl
   let rawText = '';
   try {
     const result = await generateText({
-      model: deepseek('deepseek-chat'),
+      model: deepseek('deepseek-v4-pro'),
       system: ctx.messages[0].content,
       prompt: ctx.messages[1].content,
       temperature: 0.3,

@@ -57,7 +57,7 @@ export async function runReviewer({ apiKey, content, intent, strictMode = false 
   let rawText = '';
   try {
     const result = await generateText({
-      model: deepseek('deepseek-chat'),
+      model: deepseek('deepseek-v4-pro'),
       system: systemPrompt,
       prompt: userPrompt,
       temperature: 0.2,
