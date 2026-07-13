@@ -99,6 +99,7 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
 
       store.setStatus('completed');
       store.setCurrentStep(2);
+      store.addTaskHistory({ goal: intent.goal, status: 'completed', subtaskCount: 1 });
 
       return { plan, researchResults, creatorResults, review: reviewResult, totalSteps: 2, status: 'completed' };
     }
@@ -214,6 +215,7 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
 
     store.setStatus('completed');
     store.setCurrentStep(stepCount);
+    store.addTaskHistory({ goal: intent.goal, status: 'completed', subtaskCount: plan.subtasks.length });
 
     return {
       plan,

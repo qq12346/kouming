@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useIntentStore } from '../store/intentStore';
 import { useUserStore } from '../store/userStore';
@@ -57,12 +57,7 @@ export default function Dashboard() {
   });
   const [simpleMode, setSimpleMode] = useState(false);
 
-  const agentResult = useAgentStore((s) => s.result);
-  const agentStatus = useAgentStore((s) => s.status);
-  const taskHistory = useMemo(() => {
-    if (!agentResult) return [];
-    return [{ goal: store.intent.goal, status: agentStatus, date: new Date().toISOString().slice(0, 10) }];
-  }, [agentResult, agentStatus, store.intent.goal]);
+  const taskHistory = useAgentStore((s) => s.taskHistory);
 
   // On unmount, persist to store
   useEffect(() => {
@@ -386,12 +381,14 @@ export default function Dashboard() {
         {taskHistory.length > 0 && (
           <div className="mt-8 pt-6 border-t border-gray-100">
             <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">最近</h3>
-            <div className="space-y-2">
-              {taskHistory.slice(0, 3).map((t, i) => (
-                <div key={i} className="text-xs text-gray-500 flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${t.status === 'completed' ? 'bg-green-400' : 'bg-gray-300'}`} />
-                  {t.goal?.slice(0, 30)}...
-                </div>
+            <div className="space-y-1">
+              {taskHistory.slice(0, 5).map((t, i) => (
+                <button key={t.id || i} onClick={() => navigate('/assembly/new')}
+                  className="w-full text-left text-xs text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg px-2 py-1.5 transition-colors flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.status === 'completed' ? 'bg-green-400' : 'bg-gray-300'}`} />
+                  <span className="truncate">{t.goal?.slice(0, 40)}</span>
+                  <span className="text-gray-300 shrink-0 ml-auto">{t.subtaskCount}步</span>
+                </button>
               ))}
             </div>
           </div>

@@ -62,6 +62,14 @@ export const useAgentStore = create(
 
       setUserEdits: (userEdits) => set({ userEdits }),
 
+      /** 任务历史（每次完成后追加，最新的在前） */
+      taskHistory: [],
+
+      addTaskHistory: (entry) =>
+        set((s) => ({
+          taskHistory: [{ ...entry, id: Date.now() }, ...s.taskHistory].slice(0, 20),
+        })),
+
       /** 重置执行状态 */
       reset: () =>
         set({
@@ -87,6 +95,7 @@ export const useAgentStore = create(
         result: state.result,
         skipSteps: state.skipSteps,
         userEdits: state.userEdits,
+        taskHistory: state.taskHistory,
       }),
     },
   ),
