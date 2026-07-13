@@ -286,6 +286,20 @@ function ConstitutionBadge({ status }) {
 }
 
 function AgentCard({ agent, output, status, subtaskId }) {
+  let display = output?.slice(0, 500) || '等待...';
+  // Planner 的 rawText 是 JSON，解析后展示 reasoning + 子任务列表
+  if (agent === 'planner' && output) {
+    try {
+      const j = JSON.parse(output);
+      const lines = [];
+      if (j.reasoning) lines.push(j.reasoning);
+      if (j.subtasks?.length) {
+        lines.push('');
+        j.subtasks.forEach((t, i) => { lines.push(`${t.id || i + 1}. ${t.title || '未命名子任务'}`); });
+      }
+      display = lines.join('\n').slice(0, 500);
+    } catch { /* 不是 JSON 就原样显示 */ }
+  }
   return (
     <div className="p-4 rounded-xl" style={{ border: '1px solid var(--color-ai-border)', background: 'var(--color-ai-bg)' }}>
       <div className="flex items-center gap-2 mb-2">
