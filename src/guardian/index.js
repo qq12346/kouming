@@ -7,8 +7,7 @@
 
 import { filter } from '../constitution';
 import { AuditCollector } from '../audit/collector';
-
-export const GuardianEvents = new EventTarget();
+import { useGuardianStore } from '../store/guardianStore';
 
 let checkInterval = null;
 
@@ -76,7 +75,7 @@ export function initGuardian(store) {
 }
 
 function notify(type, detail) {
-  GuardianEvents.dispatchEvent(new CustomEvent(`guardian:${type}`, { detail: { ...detail, timestamp: Date.now() } }));
+  useGuardianStore.getState().addAlert({ type, ...detail });
 }
 
 // 指标漂移跟踪

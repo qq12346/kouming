@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { useIntentStore } from '../store/intentStore';
 import { useAgentStore } from '../store/agentStore';
+import { useGuardianStore } from '../store/guardianStore';
 import { useUserStore } from '../store/userStore';
 import { AuditCollector } from '../audit/collector';
 import { orchestrate } from '../orchestrator';
@@ -16,6 +17,7 @@ export default function AssemblyLine() {
   const navigate = useNavigate();
   const { intent, trace, values, status: intentStatus, setStatus } = useIntentStore();
   const apiKey = useUserStore((s) => s.apiKey);
+  const guardianAlerts = useGuardianStore((s) => s.alerts);
   const {
     agentOutputs, currentStep, totalSteps, status: execStatus, setStatus: setExecStatus,
     result, setResult, skipSteps: storedSkips, setSkipSteps: storeSkips,
@@ -273,6 +275,27 @@ export default function AssemblyLine() {
               </div>
             )}
           </div>
+
+          {/* Guardian alerts */}
+          {guardianAlerts.length > 0 && (
+            <div className="pt-4 border-t border-gray-100">
+              <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">守护</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {guardianAlerts.slice(0, 5).map((a) => (
+                  <div key={a.id} className={`text-xs p-2 rounded-lg ${
+                    a.type === 'violation' ? 'bg-red-50 text-red-700' :
+                    a.type === 'metric_drift' ? 'bg-amber-50 text-amber-700' :
+                    'bg-purple-50 text-purple-700'
+                  }`}>
+                    <span className="font-medium">
+                      {a.type === 'violation' ? '⚡' : a.type === 'metric_drift' ? '📉' : '💜'}
+                    </span>{' '}
+                    {a.message}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Progress */}
           {execStatus === 'running' && (
