@@ -5,7 +5,7 @@ import { useAgentStore } from '../store/agentStore';
 import { useGuardianStore } from '../store/guardianStore';
 import { useUserStore } from '../store/userStore';
 import { AuditCollector } from '../audit/collector';
-import { orchestrate } from '../orchestrator';
+import { orchestrate, improveIteration } from '../orchestrator';
 
 const VALUE_LABELS = {
   speed: { speed: '快速', accuracy: '准确', depth: '深度' },
@@ -31,6 +31,8 @@ export default function AssemblyLine() {
   const [editContent, setEditContent] = useState('');
   const [rebuttals, setRebuttals] = useState({});
   const [error, setError] = useState(storeError);
+  const [iterations, setIterations] = useState([]); // Reflexion 多轮改进结果
+  const [improving, setImproving] = useState(false);
 
   const updateSkipSteps = (s) => { storeSkips(Array.from(s)); };
   const updateUserEdits = (e) => { storeEdits(e); setLocalEdits(e); };
@@ -64,6 +66,17 @@ export default function AssemblyLine() {
       updateResult(r);
     } catch (e) { updateError(e.message); }
   }, [apiKey, intent, trace, values, skipSteps, userEdits, result]);
+
+  const handleImprove = async () => {
+    if (!apiKey || !result?.review) return;
+    if (iterations.length >= 5) return;
+    setImproving(true);
+    try {
+      const r = await improveIteration({ apiKey, intent, trace, values, review: result.review });
+      setIterations([...iterations, r]);
+    } catch (e) { setError(`改进失败: ${e.message}`); }
+    setImproving(false);
+  };
 
   const toggleSkipStep = (stepId) => {
     const next = new Set(skipSteps);
@@ -215,7 +228,7 @@ export default function AssemblyLine() {
             {result.review && (
               <div className="p-4 rounded-xl bg-white border border-gray-200">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">Reviewer</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">Reviewer #{iterations.length + 1}</span>
                   <span className="text-xs text-gray-500">
                     综合评分 {result.review.overall}/5
                     {result.review.strictMode && ' · 严格模式'}
@@ -226,8 +239,33 @@ export default function AssemblyLine() {
                     {result.review.issues.map((issue, i) => <div key={i}>- {issue}</div>)}
                   </div>
                 )}
+                {iterations.length < 5 && (
+                  <button onClick={handleImprove} disabled={improving}
+                    className="mt-3 w-full px-4 py-2 text-xs bg-teal-50 text-teal-700 rounded-lg
+                               hover:bg-teal-100 disabled:opacity-50 transition-colors">
+                    {improving ? '改进中...' : `根据反馈改进 (${5 - iterations.length}/5)`}
+                  </button>
+                )}
               </div>
             )}
+
+            {/* Improved iterations */}
+            {iterations.map((iter, idx) => (
+              <div key={idx} className="p-4 rounded-xl bg-white border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">Reviewer #{idx + 2}</span>
+                  <span className="text-xs text-gray-500">
+                    综合评分 {iter.review.overall}/5
+                    <span className="text-gray-400 ml-2">第 {idx + 1} 轮改进</span>
+                  </span>
+                </div>
+                {iter.review.issues?.length > 0 && (
+                  <div className="text-xs text-gray-600 space-y-1">
+                    {iter.review.issues.map((issue, i) => <div key={i}>- {issue}</div>)}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

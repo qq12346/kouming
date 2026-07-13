@@ -231,6 +231,52 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
   }
 }
 
+/**
+ * 改进迭代：根据 Reviewer 反馈重新运行 Creator → Reviewer
+ * Reflexion 循环的核心——吸收反馈、重新生成、再次审查
+ */
+export async function improveIteration({ apiKey, intent, trace, values, review }) {
+  const store = useAgentStore.getState();
+  const userStore = useUserStore.getState();
+  const modelConfig = {
+    modelProvider: userStore.modelProvider || 'deepseek',
+    customBaseURL: userStore.customBaseURL,
+    modelName: userStore.modelName,
+  };
+
+  const saved = store.result;
+  if (!saved?.creatorResults?.length) throw new Error('没有可改进的 Creator 结果');
+
+  // Build feedback context from reviewer
+  const feedbackText = [
+    `综合评分: ${review.overall}/5`,
+    '问题和建议:',
+    ...(review.issues || []).map((i) => `- ${i}`),
+  ].join('\n');
+
+  const improvedResults = [];
+  for (const item of saved.creatorResults) {
+    const creatorOutput = await runCreator({
+      apiKey, ...modelConfig, intent, trace, values,
+      subtask: item.subtask,
+      plannerReasoning: saved.plan?.reasoning || '',
+      knowledgeContext: `[上一轮审查反馈]\n${feedbackText}`,
+    });
+
+    const subResearch = saved.researchResults?.find((r) => r.subtaskId === item.subtask.id);
+    improvedResults.push({ subtask: item.subtask, research: subResearch, ...creatorOutput });
+  }
+
+  // Run Reviewer on improved content
+  const combinedContent = improvedResults.map((r) => r.content).join('\n\n---\n\n');
+  const strictMode = userStore.uncomfortableMode;
+  const newReview = await runReviewer({
+    apiKey, ...modelConfig, content: combinedContent, intent, strictMode,
+  });
+
+  return { creatorResults: improvedResults, review: newReview };
+}
+
 export function shutdown() {
   if (guardianUnsub) { guardianUnsub(); guardianUnsub = null; }
 }
