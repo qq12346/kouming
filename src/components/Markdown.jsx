@@ -32,6 +32,31 @@ function parseMarkdown(text) {
   // 行内代码 (`code`)
   html = html.replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs text-pink-600 font-mono">$1</code>');
 
+  // 表格: 匹配连续的 |...| 行（至少 3 行：表头 + 分隔 + 数据）
+  html = html.replace(/((?:^\|.+\|\s*$(?:\n|$))+)/gm, (block) => {
+    const lines = block.trim().split('\n');
+    if (lines.length < 2) return block;
+    const headerLine = lines[0];
+    const sepLine = lines[1];
+    const dataLines = lines.slice(2);
+    if (!/^\|[-: |]+\|$/.test(sepLine.trim())) return block; // 不是表格分隔行
+
+    const parseRow = (line) => line.split('|').slice(1, -1).map((c) => c.trim());
+
+    const header = parseRow(headerLine).map((c) =>
+      `<th class="px-3 py-2 text-xs font-medium text-gray-700 bg-gray-50 border-b border-gray-200 text-left">${c}</th>`
+    ).join('');
+
+    const rows = dataLines.map((r) => {
+      const cells = parseRow(r).map((c) =>
+        `<td class="px-3 py-2 text-xs text-gray-600 border-b border-gray-100">${c}</td>`
+      ).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+
+    return `<div class="overflow-x-auto my-3"><table class="w-full border-collapse border border-gray-200 rounded-lg"><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  });
+
   // 标题 (###, ##, #)
   html = html.replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold text-gray-900 mt-3 mb-1">$1</h3>');
   html = html.replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold text-gray-900 mt-4 mb-2">$1</h2>');
