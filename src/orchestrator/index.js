@@ -28,25 +28,45 @@ let guardianUnsub = null;
  * @param {object} deps.options
  * @returns {Promise<object>}
  */
-export async function orchestrate({ apiKey, intent, trace, values, options = {} }) {
+export async function orchestrate({ apiKey, intent, trace, values, options = {}, savedResult = null }) {
   const store = useAgentStore.getState();
-  store.reset();
-  store.setStatus('running');
+
+  if (savedResult) {
+    // Resume: skip reset, use the partial result to skip done steps
+    store.setStatus('running');
+  } else {
+    store.reset();
+    store.setStatus('running');
+  }
 
   if (!guardianUnsub) {
     guardianUnsub = initGuardian(useAgentStore);
   }
 
   try {
-    // Step 1: Planner
-    store.setCurrentStep(1);
-    const plan = await runPlanner({ apiKey, intent, trace, values });
-    store.appendOutput({
-      agent: 'planner',
-      output: plan.rawText,
-      filtered: plan.constitution.status !== 'pass',
-      constitution: plan.constitution.status,
-    });
+    // Step 1: Planner (skip if resuming with existing plan)
+    let plan;
+    let researchResults;
+    let creatorResults;
+    let reviewResult = null;
+
+    if (savedResult?.plan) {
+      plan = savedResult.plan;
+      researchResults = savedResult.researchResults || [];
+      creatorResults = savedResult.creatorResults || [];
+      reviewResult = savedResult.review || null;
+    } else {
+      store.setCurrentStep(1);
+      plan = await runPlanner({ apiKey, intent, trace, values });
+      store.appendOutput({
+        agent: 'planner',
+        output: plan.rawText,
+        filtered: plan.constitution.status !== 'pass',
+        constitution: plan.constitution.status,
+      });
+      researchResults = [];
+      creatorResults = [];
+    }
 
     // 计算总步数
     const withResearch = options.withResearch !== false;
@@ -58,12 +78,16 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {} 
     store.setTotalSteps(stepCount);
 
     // Step 2: Researcher (optional, per sub-task)
-    let currentStep = 1;
-    const researchResults = [];
+    let currentStep = savedResult?.plan ? savedResult.currentStep || 1 : 1;
 
     if (withResearch) {
       for (const subtask of plan.subtasks) {
-        if (options.skipSteps?.includes(subtask.id)) continue;
+        // Skip if already done (resume) or user skipped
+        const alreadyDone = savedResult && researchResults.find((r) => r.subtaskId === subtask.id);
+        if (alreadyDone || options.skipSteps?.includes(subtask.id)) {
+          if (alreadyDone) currentStep++;
+          continue;
+        }
         currentStep++;
         store.setCurrentStep(currentStep);
 
@@ -90,8 +114,11 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {} 
     }
 
     // Step 3: Creator (per sub-task)
-    const creatorResults = [];
     for (const subtask of plan.subtasks) {
+      // Skip if already done (resume)
+      const alreadyDone = savedResult && creatorResults.find((r) => r.subtask?.id === subtask.id);
+      if (alreadyDone) { currentStep++; continue; }
+
       currentStep++;
       store.setCurrentStep(currentStep);
 
@@ -130,8 +157,7 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {} 
     }
 
     // Step 4: Reviewer (overall review)
-    let reviewResult = null;
-    if (withReview) {
+    if (withReview && !reviewResult) {
       currentStep++;
       store.setCurrentStep(currentStep);
 

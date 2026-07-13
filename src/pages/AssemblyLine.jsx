@@ -39,18 +39,29 @@ export default function AssemblyLine() {
     if (intentStatus !== 'confirmed' || !intent.goal) navigate('/');
   }, []);
 
+  // On mount: auto-resume if interrupted, start fresh if idle
   useEffect(() => {
-    if (intentStatus === 'confirmed' && execStatus === 'idle' && !result) runOrchestration();
+    if (intentStatus !== 'confirmed') return;
+    if (execStatus === 'completed') return;
+    if (execStatus === 'running' && result) {
+      runOrchestration(true); // 断点续跑
+    } else if (execStatus === 'idle' && !result) {
+      runOrchestration(false);
+    }
   }, []);
 
-  const runOrchestration = useCallback(async () => {
+  const runOrchestration = useCallback(async (resume = false) => {
     if (!apiKey) { updateError('请先配置 DeepSeek API Key'); return; }
     updateError(null);
     try {
-      const r = await orchestrate({ apiKey, intent, trace, values, options: { skipSteps: Array.from(skipSteps), userEdits } });
+      const r = await orchestrate({
+        apiKey, intent, trace, values,
+        options: { skipSteps: Array.from(skipSteps), userEdits },
+        savedResult: resume ? result : null,
+      });
       updateResult(r);
     } catch (e) { updateError(e.message); }
-  }, [apiKey, intent, trace, values, skipSteps, userEdits]);
+  }, [apiKey, intent, trace, values, skipSteps, userEdits, result]);
 
   const toggleSkipStep = (stepId) => {
     const next = new Set(skipSteps);
