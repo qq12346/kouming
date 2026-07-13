@@ -45,6 +45,21 @@ export const useAgentStore = create(
 
     setError: (error) => set({ error, status: 'error' }),
 
+    /** 编排结果（切页面后恢复用） */
+    result: null,
+
+    setResult: (result) => set({ result }),
+
+    /** 跳过的步骤 */
+    skipSteps: [],
+
+    setSkipSteps: (skipSteps) => set({ skipSteps }),
+
+    /** 用户编辑 */
+    userEdits: {},
+
+    setUserEdits: (userEdits) => set({ userEdits }),
+
     /** 重置执行状态 */
     reset: () =>
       set({
@@ -53,6 +68,9 @@ export const useAgentStore = create(
         totalSteps: 0,
         status: 'idle',
         error: null,
+        result: null,
+        skipSteps: [],
+        userEdits: {},
       }),
   })),
 );

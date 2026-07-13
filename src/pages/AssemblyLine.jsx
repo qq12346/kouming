@@ -16,50 +16,58 @@ export default function AssemblyLine() {
   const navigate = useNavigate();
   const { intent, trace, values, status: intentStatus, setStatus } = useIntentStore();
   const apiKey = useUserStore((s) => s.apiKey);
-  const { agentOutputs, currentStep, totalSteps, status: execStatus, setStatus: setExecStatus } = useAgentStore();
+  const {
+    agentOutputs, currentStep, totalSteps, status: execStatus, setStatus: setExecStatus,
+    result, setResult, skipSteps: storedSkips, setSkipSteps: storeSkips,
+    userEdits: storedEdits, setUserEdits: storeEdits,
+    error: storeError, setError: setStoreError,
+  } = useAgentStore();
 
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [skipSteps, setSkipSteps] = useState(new Set());
+  const [skipSteps] = useState(new Set(storedSkips));
+  const [userEdits, setLocalEdits] = useState(storedEdits);
   const [editingStep, setEditingStep] = useState(null);
   const [editContent, setEditContent] = useState('');
-  const [userEdits, setUserEdits] = useState({});
   const [rebuttals, setRebuttals] = useState({});
+  const [error, setError] = useState(storeError);
+
+  const updateSkipSteps = (s) => { storeSkips(Array.from(s)); };
+  const updateUserEdits = (e) => { storeEdits(e); setLocalEdits(e); };
+  const updateResult = (r) => { setResult(r); };
+  const updateError = (e) => { setError(e); setStoreError(e); };
 
   useEffect(() => {
     if (intentStatus !== 'confirmed' || !intent.goal) navigate('/');
   }, []);
 
   useEffect(() => {
-    if (intentStatus === 'confirmed' && execStatus === 'idle') runOrchestration();
+    if (intentStatus === 'confirmed' && execStatus === 'idle' && !result) runOrchestration();
   }, []);
 
   const runOrchestration = useCallback(async () => {
-    if (!apiKey) { setError('请先配置 DeepSeek API Key'); return; }
-    setError(null);
+    if (!apiKey) { updateError('请先配置 DeepSeek API Key'); return; }
+    updateError(null);
     try {
       const r = await orchestrate({ apiKey, intent, trace, values, options: { skipSteps: Array.from(skipSteps), userEdits } });
-      setResult(r);
-    } catch (e) { setError(e.message); }
+      updateResult(r);
+    } catch (e) { updateError(e.message); }
   }, [apiKey, intent, trace, values, skipSteps, userEdits]);
 
   const toggleSkipStep = (stepId) => {
-    setSkipSteps((prev) => {
-      const next = new Set(prev);
-      next.has(stepId) ? next.delete(stepId) : next.add(stepId);
-      if (!next.has(stepId)) return next;
+    const next = new Set(skipSteps);
+    next.has(stepId) ? next.delete(stepId) : next.add(stepId);
+    updateSkipSteps(next);
+    if (next.has(stepId)) {
       setEditingStep(stepId);
       setEditContent('');
-      return next;
-    });
+    }
   };
 
   const submitUserEdit = (stepId) => {
-    setUserEdits((prev) => ({ ...prev, [stepId]: editContent }));
+    updateUserEdits({ ...userEdits, [stepId]: editContent });
     AuditCollector.stepUserDid(stepId);
     setEditingStep(null);
     setExecStatus('idle');
-    setResult(null);
+    updateResult(null);
     setTimeout(() => runOrchestration(), 0);
   };
 
@@ -97,7 +105,7 @@ export default function AssemblyLine() {
               <div className="text-sm font-medium text-red-800 mb-1">执行出错</div>
               <div className="text-xs text-red-600">{error}</div>
             </div>
-            <button onClick={() => { setError(null); setExecStatus('idle'); setResult(null); setTimeout(runOrchestration, 0); }}
+            <button onClick={() => { updateError(null); setExecStatus('idle'); updateResult(null); setTimeout(runOrchestration, 0); }}
               className="mt-4 px-4 py-2 bg-purple-600 text-white text-sm rounded-lg">重试</button>
           </div>
         )}
@@ -152,7 +160,7 @@ export default function AssemblyLine() {
                     <div className="flex gap-2">
                       <button onClick={() => submitUserEdit(item.subtask.id)}
                         className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg">提交，继续</button>
-                      <button onClick={() => { setSkipSteps((p) => { const n = new Set(p); n.delete(item.subtask.id); return n; }); setEditingStep(null); }}
+                      <button onClick={() => { const n = new Set(skipSteps); n.delete(item.subtask.id); updateSkipSteps(n); setEditingStep(null); }}
                         className="px-4 py-2 text-sm text-gray-500">取消</button>
                     </div>
                   </div>
