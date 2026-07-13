@@ -7,6 +7,7 @@ import { useUserStore } from '../store/userStore';
 import { AuditCollector } from '../audit/collector';
 import { orchestrate, improveIteration } from '../orchestrator';
 import Markdown from '../components/Markdown';
+import { buildMarkdownExport, downloadMarkdown } from '../utils/export';
 
 const VALUE_LABELS = {
   speed: { speed: '快速', accuracy: '准确', depth: '深度' },
@@ -265,6 +266,30 @@ export default function AssemblyLine() {
                 )}
               </div>
             ))}
+
+            {/* Export */}
+            {result?.creatorResults?.length > 0 && (
+              <button
+                onClick={() => {
+                  const md = buildMarkdownExport({
+                    goal: intent.goal,
+                    background: intent.background,
+                    plan: result.plan,
+                    creatorResults: result.creatorResults,
+                    review: result.review,
+                  });
+                  downloadMarkdown(md, intent.goal);
+                }}
+                className="w-full px-4 py-3 bg-purple-600 text-white text-sm rounded-xl
+                           hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                导出 Markdown
+              </button>
+            )}
+
           </div>
         )}
       </div>
