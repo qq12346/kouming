@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { useIntentStore } from '../store/intentStore';
 import { useUserStore } from '../store/userStore';
@@ -57,9 +57,12 @@ export default function Dashboard() {
   });
   const [simpleMode, setSimpleMode] = useState(false);
 
-  const taskHistory = useAgentStore((s) => s.result
-    ? [{ goal: store.intent.goal, status: s.status, date: new Date().toISOString().slice(0, 10) }]
-    : []);
+  const agentResult = useAgentStore((s) => s.result);
+  const agentStatus = useAgentStore((s) => s.status);
+  const taskHistory = useMemo(() => {
+    if (!agentResult) return [];
+    return [{ goal: store.intent.goal, status: agentStatus, date: new Date().toISOString().slice(0, 10) }];
+  }, [agentResult, agentStatus, store.intent.goal]);
 
   // On unmount, persist to store
   useEffect(() => {
