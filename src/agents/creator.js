@@ -75,6 +75,32 @@ export async function runCreator({
     content = rawText.slice(0, assumptionMatch.index).trim();
   }
 
+  // 剥离末尾可能残留的空白 "### 假设" 标题和重复内容
+  // AI 有时会在正文后面重复输出一遍相同内容——检测头部标题是否在尾部重复出现
+  const firstHeading = content.match(/^#{2,4}\s+(.+)$/m);
+  if (firstHeading) {
+    const headingText = firstHeading[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const dupPattern = new RegExp(`#{2,4}\\s+${headingText}`, 'gi');
+    let match;
+    let firstIdx = -1;
+    let secondIdx = -1;
+    // Find first and second occurrences
+    const execResults = [];
+    while ((match = dupPattern.exec(content)) !== null) {
+      execResults.push(match.index);
+    }
+    if (execResults.length >= 2) {
+      // Check the second occurrence is past 60% of content - likely a duplicate
+      firstIdx = execResults[0];
+      secondIdx = execResults[1];
+      const splitPoint = secondIdx > 0 && secondIdx > content.length * 0.6 ? secondIdx : -1;
+      if (splitPoint > 0) {
+        // Also remove any leading "### 假设" or "---" before the duplicate heading
+        content = content.slice(0, splitPoint).replace(/[\n\r]+###\s*(我(的)?)?假设\s*[\n\r-]*$/gi, '').trim();
+      }
+    }
+  }
+
   // 宪法过滤
   const constitution = filter(rawText);
 
