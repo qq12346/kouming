@@ -79,9 +79,12 @@ export async function runCreator({
   // Strip assumptions from content
   const remedyContent = constitution.remediedOutput;
   const remedyAssumptionMatch = remedyContent.match(/---\s*\n\s*我(的)?假设[\s\S]*/i);
-  const cleanContent = remedyAssumptionMatch
+  let cleanContent = remedyAssumptionMatch
     ? remedyContent.slice(0, remedyAssumptionMatch.index).trim()
     : remedyContent;
+
+  // Strip AI declaration from content (dignity constitution already covers this)
+  cleanContent = cleanContent.replace(/^[\s\S]*?AI 参与声明[\s\S]*?---\s*\n?/i, '').trim();
 
   return {
     content: cleanContent,
