@@ -19,8 +19,15 @@
 export const DIGNITY_RULE = {
   type: 'dignity',
   condition: (text) => {
-    const identityPattern = /AI[-\s]?(生成|assisted)|叩鸣[-\s]?AI|AI[-\s]?参与/i;
-    return !identityPattern.test(text);
+    // 加固：必须同时包含 AI 声明 + 叩鸣署名
+    const aiMarkers = /AI[-\s]?(生成|assisted|参与)|叩鸣|kouming/i;
+    const hasAIDeclaration = aiMarkers.test(text);
+    // 额外检查：有"AI参与"关键词但可能在伪造上下文中的情况
+    // 要求声明出现在文本前 20% 位置
+    if (!hasAIDeclaration) return true;
+    const firstMatch = text.match(aiMarkers);
+    if (firstMatch && firstMatch.index > text.length * 0.2) return true; // 声明太靠后，可能不是真正的身份声明
+    return false;
   },
   decision: 'block',
   justification: '尊严宪法（康德）：AI 必须声明身份，用户有权知道 AI 正在参与。你永远不应该在不知情的情况下被当作优化对象。',
@@ -47,12 +54,16 @@ export const DIGNITY_RULE = {
 export const AUTONOMY_RULE = {
   type: 'autonomy',
   condition: (text) => {
-    // 搜索 "替代方案" 或 "alternative" 关键词（中英文）
+    // 加固：不仅要有关键词，还要至少有 2 行结构化的替代方案列表
     const alternativesCN = (text.match(/替代方案/g) || []).length;
     const alternativesEN = (text.match(/\balternative\b/gi) || []).length;
     const alternativesPath = (text.match(/另一种(方式|思路|路径)/g) || []).length;
-    const total = alternativesCN + alternativesEN + alternativesPath;
-    return total < 2;
+    const keywords = alternativesCN + alternativesEN + alternativesPath;
+    if (keywords >= 2) return false; // 明确的关键词足够
+    // 检查是否有至少 2 行以数字或 - 开头的替代列表
+    const listItems = (text.match(/^[0-9]+[.、)]|^[-*•]/gm) || []).length;
+    if (keywords >= 1 && listItems >= 2) return false;
+    return true;
   },
   decision: 'warn',
   justification: '自主宪法（马尔库塞）：每次输出应提供至少 2 个不同的替代方案。选择的能力本身比选择了什么更重要。',
