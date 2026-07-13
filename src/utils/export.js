@@ -55,10 +55,14 @@ export function buildMarkdownExport({ goal, background, plan, creatorResults, re
     lines.push(`## ${item.subtask?.title || `子任务 ${i + 1}`}`);
     lines.push('');
     if (item.content) {
-      lines.push(item.content);
-      lines.push('');
+      // 剥离末尾可能的假设段落，避免与 item.assumptions 重复
+      const cleanContent = item.content.replace(/(?:###?\s*(?:我(的)?)?假设|[-*]{3,}\s*(?:我(的)?)?假设)[\s\S]*$/i, '').trim();
+      if (cleanContent) {
+        lines.push(cleanContent);
+        lines.push('');
+      }
     }
-    if (item.assumptions) {
+    if (item.assumptions && item.assumptions.replace(/[\s#*-]/g, '').length > 5) {
       lines.push('### 假设');
       lines.push('');
       lines.push(item.assumptions);
