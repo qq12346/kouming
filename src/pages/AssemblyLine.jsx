@@ -1,0 +1,301 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router';
+import { useIntentStore } from '../store/intentStore';
+import { useAgentStore } from '../store/agentStore';
+import { useUserStore } from '../store/userStore';
+import { AuditCollector } from '../audit/collector';
+import { orchestrate } from '../orchestrator';
+
+const VALUE_LABELS = {
+  speed: { speed: '快速', accuracy: '准确', depth: '深度' },
+  coverage: { coverage: '全面', focus: '聚焦', key_points: '关键点' },
+  novelty: { novelty: '创新', feasibility: '可行', reliability: '可靠' },
+};
+
+export default function AssemblyLine() {
+  const navigate = useNavigate();
+  const { intent, trace, values, status: intentStatus, setStatus } = useIntentStore();
+  const apiKey = useUserStore((s) => s.apiKey);
+  const { agentOutputs, currentStep, totalSteps, status: execStatus, setStatus: setExecStatus } = useAgentStore();
+
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [skipSteps, setSkipSteps] = useState(new Set());
+  const [editingStep, setEditingStep] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [userEdits, setUserEdits] = useState({});
+  const [rebuttals, setRebuttals] = useState({});
+
+  useEffect(() => {
+    if (intentStatus !== 'confirmed' || !intent.goal) navigate('/');
+  }, []);
+
+  useEffect(() => {
+    if (intentStatus === 'confirmed' && execStatus === 'idle') runOrchestration();
+  }, []);
+
+  const runOrchestration = useCallback(async () => {
+    if (!apiKey) { setError('请先配置 DeepSeek API Key'); return; }
+    setError(null);
+    try {
+      const r = await orchestrate({ apiKey, intent, trace, values, options: { skipSteps: Array.from(skipSteps), userEdits } });
+      setResult(r);
+    } catch (e) { setError(e.message); }
+  }, [apiKey, intent, trace, values, skipSteps, userEdits]);
+
+  const toggleSkipStep = (stepId) => {
+    setSkipSteps((prev) => {
+      const next = new Set(prev);
+      next.has(stepId) ? next.delete(stepId) : next.add(stepId);
+      if (!next.has(stepId)) return next;
+      setEditingStep(stepId);
+      setEditContent('');
+      return next;
+    });
+  };
+
+  const submitUserEdit = (stepId) => {
+    setUserEdits((prev) => ({ ...prev, [stepId]: editContent }));
+    AuditCollector.stepUserDid(stepId);
+    setEditingStep(null);
+    setExecStatus('idle');
+    setResult(null);
+    setTimeout(() => runOrchestration(), 0);
+  };
+
+  const rebutAssumption = (stepId, correction) => {
+    setRebuttals((prev) => ({ ...prev, [stepId]: correction }));
+    AuditCollector.assumptionRebuttal(stepId);
+  };
+
+  const constitutionStatus = result
+    ? (result.plan?.constitution?.status === 'block' || result.creatorResults?.some((r) => r.constitution?.status === 'block')
+      ? 'block' : result.creatorResults?.some((r) => r.constitution?.status === 'warn') ? 'warn' : 'pass')
+    : null;
+
+  return (
+    <div className="h-full flex">
+      {/* LEFT: Agent output area — 60% */}
+      <div className="flex-1 overflow-y-auto px-10 py-8">
+        {execStatus === 'running' && !result && (
+          <div className="space-y-4">
+            {agentOutputs.length === 0 && (
+              <div className="py-20 text-center">
+                <div className="text-sm text-gray-400 mb-2 animate-pulse">Planner 正在拆解你的意图...</div>
+                <div className="text-xs text-gray-300">{intent.goal}</div>
+              </div>
+            )}
+            {agentOutputs.map((out, i) => (
+              <AgentCard key={i} agent={out.agent} output={out.output} status={out.constitution} subtaskId={out.subtaskId} />
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <div className="py-12 text-center">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-xl inline-block text-left">
+              <div className="text-sm font-medium text-red-800 mb-1">执行出错</div>
+              <div className="text-xs text-red-600">{error}</div>
+            </div>
+            <button onClick={() => { setError(null); setExecStatus('idle'); setResult(null); setTimeout(runOrchestration, 0); }}
+              className="mt-4 px-4 py-2 bg-purple-600 text-white text-sm rounded-lg">重试</button>
+          </div>
+        )}
+
+        {result && (
+          <div className="space-y-6">
+            {/* Planner */}
+            <div className="p-5 rounded-xl" style={{ border: '1px solid var(--color-ai-border)', background: 'var(--color-ai-bg)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs px-2 py-0.5 rounded-full text-white" style={{ background: 'var(--color-ai)' }}>Planner</span>
+                <ConstitutionBadge status={result.plan?.constitution?.status} />
+              </div>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {result.plan?.subtasks?.map((st) => (
+                  <span key={st.id} className="text-xs px-3 py-1.5 bg-white rounded-full border border-purple-200 text-purple-700 font-medium">
+                    {st.id}. {st.title}
+                  </span>
+                ))}
+              </div>
+              {result.plan?.reasoning && (
+                <div className="text-xs text-gray-500 mt-2 pt-2 border-t border-purple-200">
+                  拆解依据：{result.plan.reasoning}
+                </div>
+              )}
+            </div>
+
+            {/* Creator results */}
+            {result.creatorResults?.map((item) => (
+              <div key={item.subtask.id} className="p-5 rounded-xl" style={{ border: '1px solid var(--color-ai-border)', background: 'var(--color-ai-bg)' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full text-white" style={{ background: 'var(--color-ai)' }}>
+                      Creator #{item.subtask.id}
+                    </span>
+                    {item.constitution && <ConstitutionBadge status={item.constitution.status} />}
+                  </div>
+                  <button onClick={() => toggleSkipStep(item.subtask.id)}
+                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                      skipSteps.has(item.subtask.id) || userEdits[item.subtask.id]
+                        ? 'bg-green-50 text-green-700 border-green-200'
+                        : 'text-gray-500 border-gray-200 hover:border-purple-300'
+                    }`}
+                  >
+                    {skipSteps.has(item.subtask.id) || userEdits[item.subtask.id] ? '自己做的' : '自己做'}
+                  </button>
+                </div>
+
+                {editingStep === item.subtask.id ? (
+                  <div className="space-y-3">
+                    <textarea className="w-full h-32 p-4 border border-purple-200 rounded-xl text-sm bg-white" value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)} placeholder="在这里完成这个子任务..." />
+                    <div className="flex gap-2">
+                      <button onClick={() => submitUserEdit(item.subtask.id)}
+                        className="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg">提交，继续</button>
+                      <button onClick={() => { setSkipSteps((p) => { const n = new Set(p); n.delete(item.subtask.id); return n; }); setEditingStep(null); }}
+                        className="px-4 py-2 text-sm text-gray-500">取消</button>
+                    </div>
+                  </div>
+                ) : userEdits[item.subtask.id] ? (
+                  <div className="p-3 rounded-lg text-sm text-gray-700 bg-green-50 border border-green-200">
+                    {userEdits[item.subtask.id]}
+                  </div>
+                ) : (
+                  <>
+                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {item.content || '(AI 未生成内容)'}
+                    </div>
+
+                    {/* Assumptions — 追问宪法：不可折叠 */}
+                    {item.assumptions && (
+                      <div className="mt-4 p-3 rounded-lg text-xs"
+                        style={{ background: 'var(--color-assumption-bg)', border: '1px solid #FAC775' }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium" style={{ color: 'var(--color-assumption)' }}>我的假设</span>
+                          {rebuttals[item.subtask.id] && (
+                            <span className="text-green-700">已有修正</span>
+                          )}
+                        </div>
+                        <div className="whitespace-pre-wrap" style={{ color: '#854F0B' }}>{item.assumptions}</div>
+                        {!rebuttals[item.subtask.id] && (
+                          <input className="mt-2 w-full px-3 py-1.5 text-xs border border-amber-300 rounded-lg bg-white
+                                             focus:outline-none focus:ring-1 focus:ring-amber-400"
+                            placeholder="不对——我认为..."
+                            onKeyDown={(e) => { if (e.key === 'Enter' && e.target.value.trim()) { rebutAssumption(item.subtask.id, e.target.value.trim()); e.target.value = ''; } }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+
+            {result.review && (
+              <div className="p-4 rounded-xl bg-white border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">Reviewer</span>
+                  <span className="text-xs text-gray-500">
+                    综合评分 {result.review.overall}/5
+                    {result.review.strictMode && ' · 严格模式'}
+                  </span>
+                </div>
+                {result.review.issues?.length > 0 && (
+                  <div className="text-xs text-gray-600 space-y-1">
+                    {result.review.issues.map((issue, i) => <div key={i}>- {issue}</div>)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* RIGHT: Context panel — 40% */}
+      <div className="w-[360px] border-l border-gray-200 bg-white p-6 overflow-y-auto shrink-0">
+        <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">语境</h3>
+
+        <div className="space-y-4">
+          <ContextBlock label="意图" text={intent.goal} />
+          {intent.background && <ContextBlock label="背景" text={intent.background} />}
+          {intent.constraints && <ContextBlock label="约束" text={intent.constraints} />}
+
+          {trace && !trace.skipped && (
+            <div className="pt-2 border-t border-gray-100">
+              <div className="text-xs text-gray-400 mb-1">溯源</div>
+              <div className="text-sm text-gray-600">服务于 {trace.serves}</div>
+              <div className="text-sm text-gray-600">"好" = {trace.definedGood}</div>
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-gray-100">
+            <div className="text-xs text-gray-400 mb-1">价值观</div>
+            {Object.entries(values).map(([k, v]) => (
+              <div key={k} className="text-sm text-gray-700">
+                {VALUE_LABELS[k]?.[v] || v}
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-4 border-t border-gray-100">
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">宪法状态</h3>
+            <div className="flex items-center gap-2">
+              {constitutionStatus === 'pass' && <span className="w-2 h-2 rounded-full bg-green-500" />}
+              {constitutionStatus === 'warn' && <span className="w-2 h-2 rounded-full bg-amber-500" />}
+              {constitutionStatus === 'block' && <span className="w-2 h-2 rounded-full bg-red-500" />}
+              {!constitutionStatus && <span className="w-2 h-2 rounded-full bg-gray-300" />}
+              <span className="text-xs text-gray-500">
+                {constitutionStatus === 'pass' ? '全部通过' : constitutionStatus === 'warn' ? '有警告' : constitutionStatus === 'block' ? '有阻断' : '等待中'}
+              </span>
+            </div>
+            {constitutionStatus !== 'pass' && constitutionStatus && (
+              <div className="mt-2 text-xs text-amber-700">
+                Agent 输出未完全通过宪法检查。查看左侧卡片中的标记了解详情。
+              </div>
+            )}
+          </div>
+
+          {/* Progress */}
+          {execStatus === 'running' && (
+            <div className="pt-4 border-t border-gray-100">
+              <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">进度</h3>
+              <div className="text-xs text-gray-500">{currentStep}/{totalSteps || '?'} 步</div>
+              <div className="mt-1 w-full bg-gray-200 rounded-full h-1">
+                <div className="bg-purple-500 h-1 rounded-full transition-all" style={{ width: totalSteps ? `${(currentStep/totalSteps)*100}%` : '10%' }} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConstitutionBadge({ status }) {
+  if (!status || status === 'pass') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">宪法通过</span>;
+  if (status === 'warn') return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">宪法警告</span>;
+  return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">宪法阻断</span>;
+}
+
+function AgentCard({ agent, output, status, subtaskId }) {
+  return (
+    <div className="p-4 rounded-xl" style={{ border: '1px solid var(--color-ai-border)', background: 'var(--color-ai-bg)' }}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs px-2 py-0.5 rounded-full text-white" style={{ background: 'var(--color-ai)' }}>
+          {agent === 'planner' ? 'Planner' : agent === 'researcher' ? 'Researcher' : agent === 'creator' ? `Creator ${subtaskId ? '#' + subtaskId : ''}` : agent}
+        </span>
+        <ConstitutionBadge status={status} />
+      </div>
+      <div className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">{output?.slice(0, 500) || '等待...'}</div>
+    </div>
+  );
+}
+
+function ContextBlock({ label, text }) {
+  return (
+    <div>
+      <div className="text-xs text-gray-400 mb-1">{label}</div>
+      <div className="text-sm text-gray-700 leading-relaxed">{text}</div>
+    </div>
+  );
+}
