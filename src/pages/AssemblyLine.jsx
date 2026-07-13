@@ -58,7 +58,7 @@ export default function AssemblyLine() {
     try {
       const r = await orchestrate({
         apiKey, intent, trace, values,
-        options: { skipSteps: Array.from(skipSteps), userEdits },
+        options: { skipSteps: Array.from(skipSteps), userEdits, simpleMode: intent.simpleMode || false },
         savedResult: resume ? result : null,
       });
       updateResult(r);

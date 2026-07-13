@@ -16,6 +16,7 @@ export const useIntentStore = create(
         background: '',
         constraints: '',
         successCriteria: '',
+        simpleMode: false,
       },
 
       /** 更新意图字段 */

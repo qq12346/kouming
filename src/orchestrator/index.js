@@ -74,7 +74,34 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
       creatorResults = [];
     }
 
-    // 计算总步数
+    // 简单模式：跳过 Planner + Researcher，直接单次生成 + 审查
+    if (options.simpleMode) {
+      store.setTotalSteps(2);
+      store.setCurrentStep(1);
+
+      const plan = { subtasks: [{ id: 1, title: '直接生成', goal: intent.goal, dependsOn: [] }], reasoning: '快速模式——跳过拆解和调研' };
+      const researchResults = [];
+
+      store.appendOutput({ agent: 'planner', output: '[快速模式] 跳过 Planner 拆解', filtered: false, constitution: 'pass' });
+
+      const creatorOutput = await runCreator({
+        apiKey, ...modelConfig, intent, trace, values, subtask: plan.subtasks[0], plannerReasoning: plan.reasoning, knowledgeContext: '',
+      });
+      store.setCurrentStep(2);
+      store.appendOutput({ agent: 'creator', output: creatorOutput.rawText, filtered: creatorOutput.constitution.status !== 'pass', constitution: creatorOutput.constitution.status, subtaskId: 1 });
+
+      const creatorResults = [{ subtask: plan.subtasks[0], ...creatorOutput }];
+
+      const strictMode = useUserStore.getState().uncomfortableMode;
+      const combinedContent = creatorResults.map((r) => r.content).join('\n');
+      const reviewResult = await runReviewer({ apiKey, ...modelConfig, content: combinedContent, intent, strictMode });
+      store.appendOutput({ agent: 'reviewer', output: JSON.stringify(reviewResult), filtered: reviewResult.constitution?.status !== 'pass', constitution: reviewResult.constitution?.status || 'pass' });
+
+      store.setStatus('completed');
+      store.setCurrentStep(2);
+
+      return { plan, researchResults, creatorResults, review: reviewResult, totalSteps: 2, status: 'completed' };
+    }
     const withResearch = options.withResearch !== false;
     const withReview = options.withReview !== false;
     let stepCount = 1; // planner

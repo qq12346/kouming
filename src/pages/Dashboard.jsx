@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useIntentStore } from '../store/intentStore';
 import { useUserStore } from '../store/userStore';
+import { useAgentStore } from '../store/agentStore';
 import { AuditCollector } from '../audit/collector';
 
 const VALUE_OPTIONS = {
@@ -54,6 +55,11 @@ export default function Dashboard() {
     coverage: store.values.coverage || 'coverage',
     novelty: store.values.novelty || 'novelty',
   });
+  const [simpleMode, setSimpleMode] = useState(false);
+
+  const taskHistory = useAgentStore((s) => s.result
+    ? [{ goal: store.intent.goal, status: s.status, date: new Date().toISOString().slice(0, 10) }]
+    : []);
 
   // On unmount, persist to store
   useEffect(() => {
@@ -88,6 +94,7 @@ export default function Dashboard() {
     store.setIntent('goal', goal);
     store.setIntent('background', background);
     store.setIntent('constraints', constraints);
+    store.setIntent('simpleMode', simpleMode);
     store.setTrace('serves', trace.serves);
     store.setTrace('definedGood', trace.definedGood);
     store.setTrace('alternative', trace.alternative);
@@ -163,6 +170,12 @@ export default function Dashboard() {
                 />
               </div>
             </details>
+
+            <label className="flex items-center gap-2 mt-3 text-xs text-gray-400 cursor-pointer">
+              <input type="checkbox" checked={simpleMode} onChange={(e) => setSimpleMode(e.target.checked)}
+                className="w-3.5 h-3.5 rounded accent-purple-600" />
+              快速模式 — 跳过 Planner & Researcher，直接生成
+            </label>
 
             <div className="flex gap-3 mt-6">
               <button
@@ -322,6 +335,12 @@ export default function Dashboard() {
                 回去修改
               </button>
             </div>
+
+            <p className="text-xs text-gray-400 mt-6 leading-relaxed">
+              三条宪法不是你给 AI 的指令——是叩鸣帮你盯着的底线。AI 会在每个输出里声明自己是 AI（尊严），
+              你必须看到替代方案（自主），所有前提假设被标记出来等你审视（追问）。
+              看到"自己做"按钮了吗？那是你的自主权的物理实现——任何时候都可以拿回来。
+            </p>
           </div>
         )}
       </div>
@@ -360,6 +379,20 @@ export default function Dashboard() {
             就绪——尚未有 Agent 输出
           </div>
         </div>
+
+        {taskHistory.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-gray-100">
+            <h3 className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">最近</h3>
+            <div className="space-y-2">
+              {taskHistory.slice(0, 3).map((t, i) => (
+                <div key={i} className="text-xs text-gray-500 flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${t.status === 'completed' ? 'bg-green-400' : 'bg-gray-300'}`} />
+                  {t.goal?.slice(0, 30)}...
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
