@@ -108,6 +108,8 @@ export default function Dashboard() {
       navigate('/settings');
       return;
     }
+    // 清空旧任务结果，避免 AssemblyLine 误判为已完成
+    useAgentStore.getState().reset();
     navigate('/assembly/new');
   };
 
