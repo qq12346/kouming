@@ -6,6 +6,7 @@ import { useGuardianStore } from '../store/guardianStore';
 import { useUserStore } from '../store/userStore';
 import { AuditCollector } from '../audit/collector';
 import { orchestrate, improveIteration } from '../orchestrator';
+import Markdown from '../components/Markdown';
 
 const VALUE_LABELS = {
   speed: { speed: '快速', accuracy: '准确', depth: '深度' },
@@ -196,9 +197,7 @@ export default function AssemblyLine() {
                   </div>
                 ) : (
                   <>
-                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {item.content || '(AI 未生成内容)'}
-                    </div>
+                    <Markdown className="text-sm text-gray-700 leading-relaxed" text={item.content || '(AI 未生成内容)'} />
 
                     {/* Assumptions — 追问宪法：不可折叠 */}
                     {item.assumptions && (
@@ -210,7 +209,7 @@ export default function AssemblyLine() {
                             <span className="text-green-700">已有修正</span>
                           )}
                         </div>
-                        <div className="whitespace-pre-wrap" style={{ color: '#854F0B' }}>{item.assumptions}</div>
+                        <Markdown className="whitespace-pre-wrap text-xs" style={{ color: '#854F0B' }} text={item.assumptions} />
                         {!rebuttals[item.subtask.id] && (
                           <input className="mt-2 w-full px-3 py-1.5 text-xs border border-amber-300 rounded-lg bg-white
                                              focus:outline-none focus:ring-1 focus:ring-amber-400"
@@ -380,7 +379,7 @@ function AgentCard({ agent, output, status, subtaskId }) {
         </span>
         <ConstitutionBadge status={status} />
       </div>
-      <div className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4">{output?.slice(0, 500) || '等待...'}</div>
+      <Markdown className="text-sm text-gray-600 leading-relaxed line-clamp-4" text={display} />
     </div>
   );
 }
