@@ -58,7 +58,7 @@ src/
 
 ## 技术栈
 
-React 19 · Vite 8 · Zustand 5 · Vercel AI SDK · DeepSeek · Tailwind CSS · Vitest
+React 19 · Vite 8 · Zustand 5 · Vercel AI SDK · BYOK · Tailwind CSS · Vitest
 
 ## 许可
 
