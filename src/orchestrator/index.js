@@ -30,6 +30,12 @@ let guardianUnsub = null;
  */
 export async function orchestrate({ apiKey, intent, trace, values, options = {}, savedResult = null }) {
   const store = useAgentStore.getState();
+  const userStore = useUserStore.getState();
+  const modelConfig = {
+    modelProvider: userStore.modelProvider || 'deepseek',
+    customBaseURL: userStore.customBaseURL,
+    modelName: userStore.modelName,
+  };
 
   if (savedResult) {
     // Resume: skip reset, use the partial result to skip done steps
@@ -57,7 +63,7 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
       reviewResult = savedResult.review || null;
     } else {
       store.setCurrentStep(1);
-      plan = await runPlanner({ apiKey, intent, trace, values });
+      plan = await runPlanner({ apiKey, ...modelConfig, intent, trace, values });
       store.appendOutput({
         agent: 'planner',
         output: plan.rawText,
@@ -97,7 +103,7 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
         );
 
         const research = await runResearcher({
-          apiKey, intent, trace, values, subtask,
+          apiKey, ...modelConfig, intent, trace, values, subtask,
           plannerReasoning: plan.reasoning,
           knowledgeContext: kbContext,
         });
@@ -139,7 +145,7 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
         const combinedContext = [subResearch?.content, kbContext].filter(Boolean).join('\n\n');
 
         creatorOutput = await runCreator({
-          apiKey, intent, trace, values, subtask,
+          apiKey, ...modelConfig, intent, trace, values, subtask,
           plannerReasoning: plan.reasoning,
           knowledgeContext: combinedContext,
         });
@@ -168,7 +174,7 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
 
       const strictMode = useUserStore.getState().uncomfortableMode;
       reviewResult = await runReviewer({
-        apiKey, content: combinedContent, intent, strictMode,
+        apiKey, ...modelConfig, content: combinedContent, intent, strictMode,
       });
 
       store.appendOutput({

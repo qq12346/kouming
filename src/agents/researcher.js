@@ -8,14 +8,13 @@
  */
 
 import { generateText } from 'ai';
-import { createDeepSeek } from '@ai-sdk/deepseek';
+import { getModel } from './model';
 import { buildContext } from '../context/builder';
 import { filter } from '../constitution';
 
-export async function runResearcher({ apiKey, intent, trace, values, subtask, plannerReasoning, knowledgeContext }) {
+export async function runResearcher({ apiKey, modelProvider, customBaseURL, modelName, intent, trace, values, subtask, plannerReasoning, knowledgeContext }) {
   if (!apiKey) throw new Error('Researcher: API Key 未配置');
 
-  const deepseek = createDeepSeek({ apiKey });
   const ctx = buildContext({ role: 'researcher', intent, trace, values, subtask, plannerReasoning });
 
   if (knowledgeContext) {
@@ -25,7 +24,7 @@ export async function runResearcher({ apiKey, intent, trace, values, subtask, pl
   let rawText = '';
   try {
     const result = await generateText({
-      model: deepseek('deepseek-v4-pro'),
+      model: getModel({ apiKey, modelProvider, customBaseURL, modelName }),
       system: ctx.messages[0].content,
       prompt: ctx.messages[1].content,
       temperature: 0.3,

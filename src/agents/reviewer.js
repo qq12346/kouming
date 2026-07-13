@@ -8,7 +8,7 @@
  */
 
 import { generateText } from 'ai';
-import { createDeepSeek } from '@ai-sdk/deepseek';
+import { getModel } from './model';
 import { filter } from '../constitution';
 
 const REVIEWER_PROMPT_BASE = `你是叩鸣·工坊的 Reviewer Agent。你的任务是审查以下内容的质量。
@@ -40,11 +40,9 @@ const REVIEWER_PROMPT_SUFFIX = `
   "verdict": "pass" | "revise" | "reject"
 }`;
 
-export async function runReviewer({ apiKey, content, intent, strictMode = false }) {
+export async function runReviewer({ apiKey, modelProvider, customBaseURL, modelName, content, intent, strictMode = false }) {
   if (!apiKey) throw new Error('Reviewer: API Key 未配置');
   if (!content) throw new Error('Reviewer: 缺少审查内容');
-
-  const deepseek = createDeepSeek({ apiKey });
 
   let systemPrompt = REVIEWER_PROMPT_BASE;
   if (strictMode) {
@@ -57,7 +55,7 @@ export async function runReviewer({ apiKey, content, intent, strictMode = false 
   let rawText = '';
   try {
     const result = await generateText({
-      model: deepseek('deepseek-v4-pro'),
+      model: getModel({ apiKey, modelProvider, customBaseURL, modelName }),
       system: systemPrompt,
       prompt: userPrompt,
       temperature: 0.2,

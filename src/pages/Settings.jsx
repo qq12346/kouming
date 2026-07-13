@@ -1,8 +1,16 @@
 import { useUserStore } from '../store/userStore';
 
+const MODEL_PRESETS = [
+  { value: 'deepseek', label: 'DeepSeek', model: 'deepseek-v4-pro' },
+  { value: 'custom', label: '自定义（OpenAI 兼容）', model: 'gpt-4o' },
+];
+
 export default function Settings() {
   const {
     apiKey, setApiKey, clearApiKey,
+    modelProvider, setModelProvider,
+    customBaseURL, setCustomBaseURL,
+    modelName, setModelName,
     uncomfortableMode, toggleUncomfortableMode,
     shellEnabled, toggleShellEnabled,
     shellFullAccess, toggleShellFullAccess,
@@ -49,6 +57,56 @@ export default function Settings() {
           </a>{' '}
           获取。
         </p>
+      </section>
+
+      {/* 模型选择 */}
+      <section className="mb-8 p-6 bg-white rounded-xl border border-gray-200">
+        <h2 className="text-base font-medium text-gray-900 mb-2">AI 模型</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          选择 AI 服务提供商和模型。DeepSeek 是默认推荐，也支持任何兼容 OpenAI 接口的服务。
+        </p>
+        <div className="flex gap-2 mb-4">
+          {MODEL_PRESETS.map((p) => (
+            <button key={p.value} onClick={() => { setModelProvider(p.value); setModelName(p.model); }}
+              className={`text-xs px-4 py-2 rounded-lg border transition-colors ${
+                modelProvider === p.value
+                  ? 'bg-purple-600 text-white border-purple-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {modelProvider === 'custom' && (
+          <div className="space-y-3 pt-3 border-t border-gray-100">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">API Base URL</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs
+                           focus:outline-none focus:ring-1 focus:ring-purple-400"
+                placeholder="https://api.openai.com/v1"
+                value={customBaseURL}
+                onChange={(e) => setCustomBaseURL(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">模型名称</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-xs
+                           focus:outline-none focus:ring-1 focus:ring-purple-400"
+                placeholder="gpt-4o"
+                value={modelName}
+                onChange={(e) => setModelName(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+        {modelProvider !== 'custom' && (
+          <div className="text-xs text-gray-400 pt-2">当前模型：{modelName}</div>
+        )}
       </section>
 
       {/* 不舒服模式 */}

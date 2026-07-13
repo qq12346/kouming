@@ -19,6 +19,24 @@ export const useUserStore = create(
       /** 清除 API Key */
       clearApiKey: () => set({ apiKey: '' }),
 
+      /** 模型提供商：'deepseek' | 'custom'（兼容 OpenAI 接口） */
+      modelProvider: 'deepseek',
+
+      /** 设置模型提供商 */
+      setModelProvider: (provider) => set({ modelProvider: provider }),
+
+      /** 自定义 API Base URL（modelProvider='custom' 时使用） */
+      customBaseURL: '',
+
+      /** 设置自定义 Base URL */
+      setCustomBaseURL: (url) => set({ customBaseURL: url }),
+
+      /** 模型名称 */
+      modelName: 'deepseek-v4-pro',
+
+      /** 设置模型名称 */
+      setModelName: (name) => set({ modelName: name }),
+
       /** 不舒服模式——默认关闭（老板决定 2026-07-12） */
       uncomfortableMode: false,
 
@@ -60,6 +78,9 @@ export const useUserStore = create(
       name: 'kouming-user',
       partialize: (state) => ({
         apiKey: state.apiKey,
+        modelProvider: state.modelProvider,
+        customBaseURL: state.customBaseURL,
+        modelName: state.modelName,
         uncomfortableMode: state.uncomfortableMode,
         shellEnabled: state.shellEnabled,
         shellFullAccess: state.shellFullAccess,

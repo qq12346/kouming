@@ -1,12 +1,13 @@
 /**
  * 叩鸣·工坊 — Planner Agent
  *
- * 接收用户意图，调用 DeepSeek API 拆解为子任务列表。
+ * 接收用户意图，调用 AI API 拆解为子任务列表。
+ * 支持 DeepSeek 和自定义 OpenAI 兼容端点。
  * 输出必须经过宪法过滤器检查。
  */
 
 import { generateText } from 'ai';
-import { createDeepSeek } from '@ai-sdk/deepseek';
+import { getModel } from './model';
 import { buildContext } from '../context/builder';
 import { filter } from '../constitution';
 import { registry } from './registry';
@@ -15,22 +16,24 @@ import { registry } from './registry';
  * 执行 Planner Agent —— 拆解用户意图
  *
  * @param {object} deps
- * @param {string} deps.apiKey - 用户的 DeepSeek API Key
+ * @param {string} deps.apiKey - 用户的 API Key
+ * @param {string} deps.modelProvider - 'deepseek' | 'custom'
+ * @param {string} deps.customBaseURL - 自定义端点 URL
+ * @param {string} deps.modelName - 模型名称
  * @param {object} deps.intent - 意图规格书
  * @param {object} deps.trace - 溯源追问结果
  * @param {object} deps.values - 价值观映射
  * @returns {Promise<{subtasks: Array, reasoning: string, constitution: object}>}
  */
-export async function runPlanner({ apiKey, intent, trace, values }) {
+export async function runPlanner({ apiKey, modelProvider, customBaseURL, modelName, intent, trace, values }) {
   if (!apiKey) throw new Error('Planner: API Key 未配置');
 
-  const deepseek = createDeepSeek({ apiKey });
   const ctx = buildContext({ role: 'planner', intent, trace, values });
 
   let rawText = '';
   try {
     const result = await generateText({
-      model: deepseek('deepseek-v4-pro'),
+      model: getModel({ apiKey, modelProvider, customBaseURL, modelName }),
       system: ctx.messages[0].content,
       prompt: ctx.messages[1].content,
       temperature: 0.3,

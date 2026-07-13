@@ -7,7 +7,7 @@
  */
 
 import { generateText } from 'ai';
-import { createDeepSeek } from '@ai-sdk/deepseek';
+import { getModel } from './model';
 import { buildContext } from '../context/builder';
 import { filter } from '../constitution';
 
@@ -25,6 +25,9 @@ import { filter } from '../constitution';
  */
 export async function runCreator({
   apiKey,
+  modelProvider,
+  customBaseURL,
+  modelName,
   intent,
   trace,
   values,
@@ -35,7 +38,6 @@ export async function runCreator({
   if (!apiKey) throw new Error('Creator: API Key 未配置');
   if (!subtask) throw new Error('Creator: 缺少子任务信息');
 
-  const deepseek = createDeepSeek({ apiKey });
   const ctx = buildContext({
     role: 'creator',
     intent,
@@ -53,7 +55,7 @@ export async function runCreator({
   let rawText = '';
   try {
     const result = await generateText({
-      model: deepseek('deepseek-v4-pro'),
+      model: getModel({ apiKey, modelProvider, customBaseURL, modelName }),
       system: ctx.messages[0].content,
       prompt: ctx.messages[1].content,
       temperature: 0.5,
