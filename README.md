@@ -62,7 +62,7 @@ React 19 · Vite 8 · Zustand 5 · Vercel AI SDK · DeepSeek · Tailwind CSS · 
 
 ## 许可
 
-MIT License · Copyright 2026 知至实验室 (zhizhi.ink)
+Apache License 2.0 · Copyright 2026 叩鸣实验室 (zhizhi.ink)
 
 ---
 
