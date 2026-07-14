@@ -47,6 +47,7 @@ export default function AssemblyLine() {
 
   // On mount: auto-resume if interrupted, start fresh if idle
   useEffect(() => {
+    let cancelled = false;
     if (intentStatus !== 'confirmed') return;
     if (execStatus === 'completed') return;
     if (execStatus === 'running' && result) {
@@ -54,6 +55,7 @@ export default function AssemblyLine() {
     } else if (execStatus === 'idle' && !result) {
       runOrchestration(false);
     }
+    return () => { cancelled = true; };
   }, []);
 
   const runOrchestration = useCallback(async (resume = false) => {
@@ -77,7 +79,7 @@ export default function AssemblyLine() {
       const r = await improveIteration({ apiKey, intent, trace, values, review: result.review });
       setIterations([...iterations, r]);
     } catch (e) { setError(`改进失败: ${e.message}`); }
-    setImproving(false);
+    finally { setImproving(false); }
   };
 
   const toggleSkipStep = (stepId) => {
@@ -96,7 +98,7 @@ export default function AssemblyLine() {
     setEditingStep(null);
     setExecStatus('idle');
     updateResult(null);
-    setTimeout(() => runOrchestration(), 0);
+    runOrchestration();
   };
 
   const rebutAssumption = (stepId, correction) => {
@@ -133,7 +135,7 @@ export default function AssemblyLine() {
               <div className="text-sm font-medium text-red-800 mb-1">执行出错</div>
               <div className="text-xs text-red-600">{error}</div>
             </div>
-            <button onClick={() => { updateError(null); setExecStatus('idle'); updateResult(null); setTimeout(runOrchestration, 0); }}
+            <button onClick={() => { updateError(null); setExecStatus('idle'); updateResult(null); runOrchestration(); }}
               className="mt-4 px-4 py-2 bg-purple-600 text-white text-sm rounded-lg">重试</button>
           </div>
         )}

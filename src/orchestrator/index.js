@@ -112,7 +112,7 @@ export async function orchestrate({ apiKey, intent, trace, values, options = {},
     store.setTotalSteps(stepCount);
 
     // Step 2: Researcher (optional, per sub-task)
-    let currentStep = savedResult?.plan ? savedResult.currentStep || 1 : 1;
+    let currentStep = savedResult?.plan ? (savedResult.currentStep ?? 1) : 1;
 
     if (withResearch) {
       for (const subtask of plan.subtasks) {

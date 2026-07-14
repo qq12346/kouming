@@ -67,7 +67,7 @@ export default function Settings() {
         </p>
         <div className="flex gap-2 mb-4">
           {MODEL_PRESETS.map((p) => (
-            <button key={p.value} onClick={() => { setModelProvider(p.value); setModelName(p.model); }}
+            <button key={p.value} onClick={() => { setModelProvider(p.value); if (p.value !== 'custom') setModelName(p.model); }}
               className={`text-xs px-4 py-2 rounded-lg border transition-colors ${
                 modelProvider === p.value
                   ? 'bg-purple-600 text-white border-purple-600'

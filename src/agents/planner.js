@@ -10,7 +10,6 @@ import { generateText } from 'ai';
 import { getModel } from './model';
 import { buildContext } from '../context/builder';
 import { filter } from '../constitution';
-import { registry } from './registry';
 
 /**
  * 执行 Planner Agent —— 拆解用户意图

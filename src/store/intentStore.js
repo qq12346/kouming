@@ -61,7 +61,7 @@ export const useIntentStore = create(
       /** 重置意图 */
       reset: () =>
         set({
-          intent: { goal: '', background: '', constraints: '', successCriteria: '' },
+          intent: { goal: '', background: '', constraints: '', successCriteria: '', simpleMode: false },
           trace: { serves: '', definedGood: '', alternative: '', skipped: false },
           values: { speed: 'speed', coverage: 'coverage', novelty: 'novelty' },
           status: 'draft',

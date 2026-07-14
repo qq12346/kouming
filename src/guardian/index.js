@@ -37,7 +37,7 @@ export function initGuardian(store) {
     }
   });
 
-  // Monitors 2-5: 定期检查（每 1 分钟）
+  // Monitors 2-5: 定期检查（每 10 分钟）
   checkInterval = setInterval(() => {
     const report = AuditCollector.getReport();
 
@@ -66,7 +66,7 @@ export function initGuardian(store) {
 
     // Monitor 5: 指标漂移（暂存快照，季度比较）
     trackMetricDrift(report);
-  }, 60000);
+  }, 600000);
 
   return () => {
     unsub();

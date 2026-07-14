@@ -21,7 +21,7 @@ export const useAgentStore = create(
       /** 追加一条 Agent 输出 */
       appendOutput: (output) =>
         set((s) => ({
-          agentOutputs: [...s.agentOutputs, output],
+          agentOutputs: [...s.agentOutputs, output].slice(-200),
         })),
 
       /** 当前执行步骤 */

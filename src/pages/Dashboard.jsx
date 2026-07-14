@@ -44,7 +44,7 @@ export default function Dashboard() {
   const [goal, setGoal] = useState(store.intent.goal || '');
   const [background, setBackground] = useState(store.intent.background || '');
   const [constraints, setConstraints] = useState(store.intent.constraints || '');
-  const [step, setStep] = useState(store.status === 'confirmed' ? 1 : store.status === 'valued' ? 3 : store.status === 'traced' ? 2 : 1);
+  const [step, setStep] = useState(store.status === 'confirmed' ? 4 : store.status === 'valued' ? 3 : store.status === 'traced' ? 2 : 1);
   const [trace, setTrace] = useState({
     serves: store.trace.serves || '',
     definedGood: store.trace.definedGood || '',
