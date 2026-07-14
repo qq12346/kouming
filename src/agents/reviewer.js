@@ -10,45 +10,13 @@
 import { generateText } from 'ai';
 import { getModel } from './model';
 import { filter } from '../constitution';
-
-const REVIEWER_PROMPT_BASE = `你是叩鸣·工坊的 Reviewer Agent。你的任务是审查以下内容的质量。
-
-请检查：
-1. 事实准确率：内容中的事实陈述是否有明显错误？
-2. 逻辑完整性：论证链条是否完整？有无跳跃？
-3. 与原始意图的匹配度：是否回应了用户的意图？`;
-
-const REVIEWER_PROMPT_STRICT = `
-4. 逻辑谬误：是否存在稻草人论证、滑坡谬误、虚假两难等？
-5. 确认偏误：是否只呈现了支持某一观点的证据？
-6. 替代视角：是否有未被考虑的视角？`;
-
-const REVIEWER_PROMPT_SUFFIX = `
-
-输出格式（JSON）：
-{
-  "scores": {
-    "accuracy": 1-5,
-    "logic": 1-5,
-    "intentMatch": 1-5,
-    "fallacyCheck": 1-5,
-    "biasCheck": 1-5
-  },
-  "issues": ["问题1", "问题2"],
-  "suggestions": ["建议1", "建议2"],
-  "overall": 1-5,
-  "verdict": "pass" | "revise" | "reject"
-}`;
+import { buildContext } from '../context/builder';
 
 export async function runReviewer({ apiKey, modelProvider, customBaseURL, modelName, content, intent, strictMode = false }) {
   if (!apiKey) throw new Error('Reviewer: API Key 未配置');
   if (!content) throw new Error('Reviewer: 缺少审查内容');
 
-  let systemPrompt = REVIEWER_PROMPT_BASE;
-  if (strictMode) {
-    systemPrompt += REVIEWER_PROMPT_STRICT;
-  }
-  systemPrompt += REVIEWER_PROMPT_SUFFIX;
+  const { system } = buildContext({ role: 'reviewer', intent, strictMode });
 
   const userPrompt = `请审查以下内容：\n\n意图：${intent?.goal || '未指定'}\n\n内容：\n${content.slice(0, 4000)}`;
 
@@ -56,7 +24,7 @@ export async function runReviewer({ apiKey, modelProvider, customBaseURL, modelN
   try {
     const result = await generateText({
       model: getModel({ apiKey, modelProvider, customBaseURL, modelName }),
-      system: systemPrompt,
+      system,
       prompt: userPrompt,
       temperature: 0.2,
     });

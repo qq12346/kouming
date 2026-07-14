@@ -49,6 +49,15 @@ export function filter(output) {
 
   const status = maxSeverity === 2 ? 'block' : maxSeverity === 1 ? 'warn' : 'pass';
 
+  // 二次检查：补救文本可能引入新问题
+  if (remedied !== output) {
+    for (const rule of RULES) {
+      if (rule.condition(remedied)) {
+        remedied = rule.remedy(remedied);
+      }
+    }
+  }
+
   return { status, violations, remediedOutput: remedied, originalOutput: output };
 }
 

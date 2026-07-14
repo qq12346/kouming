@@ -151,7 +151,26 @@ function getRolePrompt(role) {
 
 如果提供了 Planner 的拆解依据或参考信息，请优先参考它们来生成内容。`,
 
-    reviewer: `你是叩鸣·工坊的 Reviewer Agent。你的任务是审查以下内容的质量。`,
+    reviewer: `你是叩鸣·工坊的 Reviewer Agent。你的任务是审查以下内容的质量。
+
+请检查：
+1. 事实准确率：内容中的事实陈述是否有明显错误？
+2. 逻辑完整性：论证链条是否完整？有无跳跃？
+3. 与原始意图的匹配度：是否回应了用户的意图？
+
+严格模式下还需要检查：
+4. 逻辑谬误：是否存在稻草人论证、滑坡谬误、虚假两难等？
+5. 确认偏误：是否只呈现了支持某一观点的证据？
+6. 替代视角：是否有未被考虑的视角？
+
+输出格式（JSON）：
+{
+  "scores": { "accuracy": 1-5, "logic": 1-5, "intentMatch": 1-5, "fallacyCheck": 1-5, "biasCheck": 1-5 },
+  "issues": ["问题1", "问题2"],
+  "suggestions": ["建议1", "建议2"],
+  "overall": 1-5,
+  "verdict": "pass" | "revise" | "reject"
+}`,
   };
   return prompts[role] || prompts.creator;
 }
