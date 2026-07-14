@@ -55,14 +55,20 @@ export function buildMarkdownExport({ goal, background, plan, creatorResults, re
     lines.push(`## ${item.subtask?.title || `子任务 ${i + 1}`}`);
     lines.push('');
     if (item.content) {
-      // 剥离末尾可能的假设段落，避免与 item.assumptions 重复
-      const cleanContent = item.content.replace(/(?:###?\s*(?:我(的)?)?假设|[-*]{3,}\s*(?:我(的)?)?假设)[\s\S]*$/i, '').trim();
-      if (cleanContent) {
-        lines.push(cleanContent);
-        lines.push('');
-      }
+      // 块级去重：拆分为 ## 段落，去掉相邻或相隔的重复块
+      const blocks = item.content.split(/(?=^#{2,3}\s)/m);
+      const seen = new Set();
+      const deduped = blocks.map((b) => b.trim()).filter((b) => {
+        if (!b || b.length < 5) return false;
+        const key = b.replace(/\s+/g, '').slice(0, 80);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      lines.push(deduped.join('\n\n'));
+      lines.push('');
     }
-    if (item.assumptions && item.assumptions.replace(/[\s#*-]/g, '').length > 5) {
+    if (item.assumptions) {
       lines.push('### 假设');
       lines.push('');
       lines.push(item.assumptions);

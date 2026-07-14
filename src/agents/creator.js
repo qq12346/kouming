@@ -75,24 +75,6 @@ export async function runCreator({
     content = rawText.slice(0, assumptionMatch.index).trim();
   }
 
-  // 剥离末尾可能残留的重复内容
-  // AI 有时输出两遍完整正文——检测任意标题在末尾重复出现则切除
-  const headings = [...content.matchAll(/^#{2,4}\s+(.+)$/gm)];
-  if (headings.length >= 2) {
-    for (let i = headings.length - 1; i >= 1; i--) {
-      const lastText = headings[i][1].trim();
-      for (let j = 0; j < i; j++) {
-        if (similarity(lastText, headings[j][1].trim()) >= 0.6) {
-          const cutPoint = headings[i].index;
-          if (cutPoint > content.length * 0.6) {
-            content = content.slice(0, cutPoint).replace(/[\n\r]+###\s*(我(的)?)?假设\s*[\n\r-]*$/gi, '').trim();
-          }
-          break;
-        }
-      }
-    }
-  }
-
   // 宪法过滤
   const constitution = filter(rawText);
 
@@ -117,13 +99,4 @@ export async function runCreator({
 function extractAssumptions(text) {
   const match = text.match(/---[\s\S]*?我(的)?假设[\s\S]*/i);
   return match ? match[0].trim() : '';
-}
-
-/** 简单字符串相似度（重叠字数/平均字数） */
-function similarity(a, b) {
-  const setA = new Set(a.replace(/\s/g, ''));
-  const setB = new Set(b.replace(/\s/g, ''));
-  let overlap = 0;
-  setA.forEach((c) => { if (setB.has(c)) overlap++; });
-  return overlap / Math.max(setA.size, setB.size);
 }
