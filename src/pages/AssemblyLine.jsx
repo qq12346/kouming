@@ -198,9 +198,9 @@ export default function AssemblyLine() {
                   </div>
                 ) : (
                   <>
-                    <Markdown className="text-sm text-gray-700 leading-relaxed" text={item.content || '(AI 未生成内容)'} />
+                  <CreatorContent content={item.content} />
 
-                    {/* Assumptions — 追问宪法：不可折叠 */}
+                  {/* Assumptions — 追问宪法：不可折叠 */}
                     {item.assumptions && (
                       <div className="mt-4 p-3 rounded-lg text-xs"
                         style={{ background: 'var(--color-assumption-bg)', border: '1px solid #FAC775' }}>
@@ -405,6 +405,33 @@ function AgentCard({ agent, output, status, subtaskId }) {
         <ConstitutionBadge status={status} />
       </div>
       <Markdown className="text-sm text-gray-600 leading-relaxed line-clamp-4" text={display} />
+    </div>
+  );
+}
+
+/** AI 声明折叠 + 正文渲染 */
+function CreatorContent({ content }) {
+  if (!content) return <div className="text-sm text-gray-400">(AI 未生成内容)</div>;
+
+  const declMatch = content.match(/(叩鸣[·.]?工坊\s+AI\s*参与声明[\s\S]*?所有选择权始终属于你[。.]?\s*)---/i);
+  if (!declMatch) {
+    return <Markdown className="text-sm text-gray-700 leading-relaxed" text={content} />;
+  }
+
+  const declaration = declMatch[1].trim();
+  const body = content.slice(declMatch.index + declMatch[0].length).trim();
+
+  return (
+    <div>
+      <details className="mb-3">
+        <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600 select-none">
+          AI 参与声明
+        </summary>
+        <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg text-xs text-purple-800 leading-relaxed whitespace-pre-line">
+          {declaration}
+        </div>
+      </details>
+      <Markdown className="text-sm text-gray-700 leading-relaxed" text={body} />
     </div>
   );
 }

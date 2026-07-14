@@ -85,9 +85,6 @@ export async function runCreator({
     ? remedyContent.slice(0, remedyAssumptionMatch.index).trim()
     : remedyContent;
 
-  // 剥离 AI 参与声明（只有匹配时才移除）
-  cleanContent = cleanContent.replace(/叩鸣[·\\.]?工坊\s+AI\s*参与声明[\s\S]*?所有选择权始终属于你[。.]?\s*[-—]{2,}\s*/i, '').trim();
-
   return {
     content: cleanContent,
     assumptions: assumptions || (remedyAssumptionMatch ? remedyAssumptionMatch[0].trim() : extractAssumptions(remedyContent)),
