@@ -421,8 +421,15 @@ function CreatorContent({ content }) {
 
   const declaration = declMatch[0].trim();
   let body = content.slice(declMatch.index + declMatch[0].length).replace(/^\s*---\s*\n*/, '');
-  // 剥离末尾"假设"区域——黄色卡片单独显示
-  body = body.replace(/[\n\r]+(?:###?\s*)?(?:假设|我的假设)[\n\r\s-]*(?:我的假设：[\s\S]*)?$/i, '').trim();
+  // 从第一个"假设"标记处切掉后续所有内容
+  const assumePatterns = [/\n###?\s*假设\s*\n/i, /\n##\s*我的假设\s*\n/i, /\n---\s*\n我的假设：/i];
+  for (const pat of assumePatterns) {
+    const m = body.match(pat);
+    if (m && m.index > body.length * 0.4) {
+      body = body.slice(0, m.index).trim();
+      break;
+    }
+  }
 
   return (
     <div>

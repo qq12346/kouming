@@ -55,11 +55,15 @@ export function buildMarkdownExport({ goal, background, plan, creatorResults, re
     lines.push(`## ${item.subtask?.title || `子任务 ${i + 1}`}`);
     lines.push('');
     if (item.content) {
-      // 剥离末尾"假设"区域——由 item.assumptions 单独输出
+      // 从第一个"假设"标记处切掉后续所有内容（含重复正文）
       let clean = item.content;
-      const assumeMatch = clean.match(/[\n\r]+(?:###?\s*)?(?:假设|我的假设)[\n\r\s-]*(?:我的假设：[\s\S]*)?$/i);
-      if (assumeMatch) {
-        clean = clean.slice(0, assumeMatch.index).trim();
+      const assumePatterns = [/\n###?\s*假设\s*\n/i, /\n##\s*我的假设\s*\n/i, /\n---\s*\n我的假设：/i];
+      for (const pat of assumePatterns) {
+        const m = clean.match(pat);
+        if (m && m.index > clean.length * 0.4) {
+          clean = clean.slice(0, m.index).trim();
+          break;
+        }
       }
       // 块级去重：拆分为 ## 段落，去掉相邻或相隔的重复块
       const blocks = clean.split(/(?=^#{2,3}\s)/m);
