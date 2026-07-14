@@ -55,8 +55,14 @@ export function buildMarkdownExport({ goal, background, plan, creatorResults, re
     lines.push(`## ${item.subtask?.title || `子任务 ${i + 1}`}`);
     lines.push('');
     if (item.content) {
+      // 剥离末尾"假设"区域——由 item.assumptions 单独输出
+      let clean = item.content;
+      const assumeMatch = clean.match(/[\n\r]+(?:###?\s*)?(?:假设|我的假设)[\n\r\s-]*(?:我的假设：[\s\S]*)?$/i);
+      if (assumeMatch) {
+        clean = clean.slice(0, assumeMatch.index).trim();
+      }
       // 块级去重：拆分为 ## 段落，去掉相邻或相隔的重复块
-      const blocks = item.content.split(/(?=^#{2,3}\s)/m);
+      const blocks = clean.split(/(?=^#{2,3}\s)/m);
       const seen = new Set();
       const deduped = blocks.map((b) => b.trim()).filter((b) => {
         if (!b || b.length < 5) return false;

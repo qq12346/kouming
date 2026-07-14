@@ -413,13 +413,16 @@ function AgentCard({ agent, output, status, subtaskId }) {
 function CreatorContent({ content }) {
   if (!content) return <div className="text-sm text-gray-400">(AI 未生成内容)</div>;
 
-  const declMatch = content.match(/(叩鸣[·.]?工坊\s+AI\s*参与声明[\s\S]*?所有选择权始终属于你[。.]?\s*)---/i);
+  // 匹配声明：从"叩鸣·工坊 ... Agent"到第一个 --- 或 ## 标题
+  const declMatch = content.match(/叩鸣[·.]?工坊[\s\S]*?(?:Creator|Planner|Researcher|Reviewer)\s*Agent[\s\S]*?(?=\n---|\n##\s)/i);
   if (!declMatch) {
     return <Markdown className="text-sm text-gray-700 leading-relaxed" text={content} />;
   }
 
-  const declaration = declMatch[1].trim();
-  const body = content.slice(declMatch.index + declMatch[0].length).trim();
+  const declaration = declMatch[0].trim();
+  let body = content.slice(declMatch.index + declMatch[0].length).replace(/^\s*---\s*\n*/, '');
+  // 剥离末尾"假设"区域——黄色卡片单独显示
+  body = body.replace(/[\n\r]+(?:###?\s*)?(?:假设|我的假设)[\n\r\s-]*(?:我的假设：[\s\S]*)?$/i, '').trim();
 
   return (
     <div>
